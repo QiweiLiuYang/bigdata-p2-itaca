@@ -1,2 +1,7 @@
 # Datos y credenciales
 .env
+data/raw/
+
+# Entornos y versión de Python
+.python-version
+.venv/
