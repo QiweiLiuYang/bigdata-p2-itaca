@@ -56,9 +56,31 @@ Estas son las carpetas del repositorio:
 | etl | [etl] |
 | ingesta | [ingesta] |
 
-## Como desplegar el entorno
+## Entorno
 
-Con el **.env.example** que nos descargaremos, lo copiamos al que utiliza el repositorio.
+### Anclar la versión de python del entorno
+
+Usamos pyenv para que siempre use la misma versión:
+`pyenv local 3.14.4`
+
+### Crear el entorno
+
+Usaremos un entorno aislado para no tener conflictos con los paquetes.
+`python -m venv .venv`
+
+Lo activamos con:
+`source .venv/bin/activate`
+
+Lo desactivamos escribiendo `deactivate` en la terminal.
+
+### Requisitos del proyecto
+
+Los requisitos están recogidos en **requirements.txt**. Se instala con:
+`pip install -r requirements.txt`
+
+### Como desplegar el entorno
+
+Con el **.env.example** que nos descargaremos, lo copiamos al que utiliza el repositorio y cumplimentamos los datos que sean necesarios.
 `cp .env.example .env`
 
 Levantamos los contenedores en modo *detached* con:
