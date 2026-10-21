@@ -16,10 +16,14 @@ conexion = psycopg2.connect(
 query = """
     SELECT anyo, alumno, curso, contenido, evaluacion, nota_numerica, tipo_nota
     FROM calificaciones
-    WHERE anyo >= %s
+    WHERE anyo = %s
 """
-df = pd.read_sql(query, conexion, params=(2025,))
+
+anyos = [2021, 2022, 2023, 2024, 2025]
 os.makedirs("data/raw", exist_ok=True)
-df.to_csv("data/raw/salida.csv", index=False)
-df.to_excel("data/raw/salida.xlsx", index=False)
+
+for anyo in anyos:
+    df = pd.read_sql(query, conexion, params=(anyo,))
+    df.to_csv(f"data/raw/calificaciones_{anyo}.csv", index=False)
+
 conexion.close()
