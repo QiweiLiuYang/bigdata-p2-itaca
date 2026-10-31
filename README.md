@@ -16,16 +16,16 @@ Tecnologías usadas:
 
 ```mermaid
 graph LR
-    A[Fuente de datos con JDBC + PostgreSQL] --> B[Data Lake]
+    A[Fuente de datos con PSYCOPG2 + PostgreSQL] --> B[Data Lake]
     B --> C[ETL con Spark]
     C --> D[Automatización del pipeline]
     D --> E[Dashboard]
     E --> F[Modelo predictivo]
 ```
 
-## Fuente de datos
+## Fuentes de datos
 
-Las mismas cuatro tablas pero esta vez servidas por una base de datos **PostgreSQL** (réplica de ITACA) a la que se accede vía **JDBC** en lugar de ficheros **XML**:
+Las mismas cuatro tablas pero esta vez servidas por una base de datos **PostgreSQL** (réplica de ITACA) a la que se accede vía **PSYCOPG2** en lugar de ficheros **XML**:
 - Alumnos
 - Contenidos
 - Calificaciones
@@ -33,18 +33,21 @@ Las mismas cuatro tablas pero esta vez servidas por una base de datos **PostgreS
 
 | Tabla | Contenido | Campos Clave |
 | --- | --- | --- |
-| Alumnos | Un registro por alumno y año académico | Anyo, NIA, Curso, PrimSeg, Ciclo, Grado, Familia, Turno, Grupo |
-| Contenidos | Módulos que se imparten en cada curso | Anyo, Curso, Modulo, Nombre_Modulo|
-| Calificaciones | Nota de cada alumno en cada módulo y evaluación | Anyo, NIA, Curso, Modulo, Nota, Evaluacion |
-| Cursos | Catálogo jerarquico de cursos y ciclos formativos | Anyo, Codigo, Nombre,Padre |
+| Alumnos | Un registro por alumno y año académico | Anyo, nia, sexo, nacionalidad, provincia, municipio, ensenanza, curso, grupo, turno, linea,modalidad, repite, estado_matricula, tipo_matricula, fecha_matricula, fecha_ingreso_centro |
+| Contenidos | Módulos que se imparten en cada curso | Anyo, codigo, nombre_cas, nombre_val, ensenanza, curso |
+| Calificaciones | Nota de cada alumno en cada módulo y evaluación | Anyo, evaluacion, alumno, ensenanza, curso, contenido,bloque_contenido, nota_numerica, tipo_nota |
+| Cursos | Catálogo jerarquico de cursos y ciclos formativos | Anyo, codigo, nombre_cas, nombre_val, abreviatura, ensenanza, padre |
 
 
 | Fuente | URL / Origen | Formato | Frecuencia actualización | Licencia | Última ingesta |
 | --- | --- | --- | --- | --- | --- |
-| ITACA | [URL] | [Formato] | Única | [Licencia] | [Fecha] |
+| PostgreSQL vía PSYCOPG2 | Itaca | Tablas SQL | Única | No Aplica | 31/10/2026 |
+
 
 >[!NOTE]
 La tabla de arriba no es definitivo, se irá actualizando a medida que avance el proyecto.
+
+**Autenticación:** usuario y contraseña de PostgreSQL. La ingesta usa `lectura_bigdata`, con permisos únicamente de `SELECT`, y lee las credenciales de un fichero `.env` no versionado. La plantilla está en `.env.example`.
 
 ## Estructura del repositorio
 
@@ -52,9 +55,11 @@ Estas son las carpetas del repositorio:
 
 | Carpeta | Contenido |
 | --- | --- |
-| dashboard/ | [dashboard] |
-| etl | [etl] |
-| ingesta | [ingesta] |
+| dashboard | Sin contenido |
+| etl | Sin COntenido |
+| ingesta | Script de ingesta |
+| data/raw | Resultados de la ingesta |
+| docs/img | Carpeta donde se guarda las imágenes del markdown |
 
 ## Entorno
 
@@ -95,23 +100,53 @@ Perderemos los datos que no estén guardados en volumenes persistidos
 
 `docker compose down`
 
+### Crear usuario de solo lectura en Postgres
+
+Entrando como administrador en la base de datos ejecutamos la siguiente query:
+```sql
+CREATE USER lectura_bigdata WITH PASSWORD '<contraseña>';
+
+GRANT CONNECT ON DATABASE itaca TO lectura_bigdata;
+
+GRANT USAGE ON SCHEMA public TO lectura_bigdata;
+
+REVOKE ALL ON ALL TABLES IN SCHEMA public FROM lectura_bigdata;
+
+GRANT SELECT ON TABLE
+    alumnos,
+    calificaciones,
+    cursos,
+    contenidos,
+    grupos
+TO lectura_bigdata;
+```
+
 ## Bitácora de prácticas
 
 > Cumplimentar al finalizar la práctica
 
 ### Bloque 0 - Entorno
 
-- Objetivo: [ ]
-- Pasos realizados: [ ]
-- Problemas encontrados y solución: [ ]
-- Resultado: [capturas, enlaces]
+- Objetivo: Crear la estructura del proyecto
+- Pasos realizados: 
+    1. Crear el repo en github
+    2. Crear un repositorio local
+    3. Enlazar el repositorio local con el remoto
+- Problemas encontrados y solución: Ningún problema
+- Resultado: ![Repositorio](docs/img/Repositorio.png)
 
 ### Bloque 1 - Ingesta batch
 
-- Objetivo: [ ]
-- Pasos realizados: [ ]
-- Problemas encontrados y solución: [ ]
-- Resultado: [ ]
+- Objetivo: Conectarse a PostgreSQL y obtener los campos de las tablas alumnos, cursos, calificaciones y contenidos y persistirlo en un .json
+- Pasos realizados:
+    1. Crear el usuario de solo lectura y guardar las credenciales en el .env
+    2. Escribir ingesta_itaca_bd.py con `conectar`, `extraer_tabla`, `guardar` y `anonimizar_nia`
+    3. Limitas las columnas extraídas con el diccionario `TABLAS`
+    4. Sustituir el NIA por su hash en `alumnos` y `calificaciones`
+    5. Añadir manejo de errores, cerrar siempre la conexión, registrar el error y salir del script
+    6. Ejecutar la ingesta con `python ingesta/ingesta_itaca_bd.py` 
+- Problemas encontrados y solución: Ver [Incidencias resueltas](#incidencias-resueltas)
+- Resultado: ![Resultado ingesta](docs/img/Ingesta.png) ![Script en ejecución](docs/img/Ejecución.png)
 
 ### Bloque 2 - Bases de datos NoSQL
 
@@ -192,13 +227,13 @@ Las 2–3 decisiones de diseño más importantes, con la alternativa descartada.
 
 | Decisión | Alternativa descartada | Motivo |
 | --- | --- | --- |
-| [] | [] | [] |
+| Cambiar SELECT * por SELECT columnas específicas | SELECT * | Con SELECT * obtenía todas las columnas, con SELECT columna obtenía las que me interesaban, que son las del enunciado |
 
 ### Incidencias resueltas
 
 | Problema | Causa | Solución |
 | --- | --- | --- |
-| [] | [] | [] |
+| No conectaba la base de datos | Estaba usando credenciales de un usuario que no existe, cree el usuario con permisos de solo lectura | Crear el usuario, se detalla en  [Crear usuario de solo lectura en Postgres](#crear-usuario-de-solo-lectura-en-postgres)|
 
 ## Resultado final
 
